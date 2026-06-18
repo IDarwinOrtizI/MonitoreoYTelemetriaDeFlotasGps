@@ -21,4 +21,22 @@ public class GlobalExceptionHandler {
                 .toList());
         return problem;
     }
+
+    @ExceptionHandler(VehicleNotFoundException.class)
+    public ProblemDetail handleVehicleNotFound(VehicleNotFoundException ex) {
+        ProblemDetail problem = ProblemDetail.forStatus(HttpStatus.NOT_FOUND);
+        problem.setTitle("Vehicle not found");
+        problem.setDetail(ex.getMessage());
+        problem.setProperty("timestamp", Instant.now());
+        return problem;
+    }
+
+    @ExceptionHandler(Exception.class)
+    public ProblemDetail handleGeneralErrors(Exception ex) {
+        ProblemDetail problem = ProblemDetail.forStatus(HttpStatus.INTERNAL_SERVER_ERROR);
+        problem.setTitle("Internal server error");
+        problem.setDetail(ex.getMessage());
+        problem.setProperty("timestamp", Instant.now());
+        return problem;
+    }
 }
