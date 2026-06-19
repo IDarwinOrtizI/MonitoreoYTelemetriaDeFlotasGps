@@ -1,9 +1,12 @@
-import { Layout, VehicleList } from './components';
+import { Layout, VehicleMap, VehicleList } from './components';
 
 function App() {
   return (
     <Layout>
-      <VehicleList />
+      <div className="space-y-6">
+        <VehicleMap />
+        <VehicleList />
+      </div>
     </Layout>
   );
 }
