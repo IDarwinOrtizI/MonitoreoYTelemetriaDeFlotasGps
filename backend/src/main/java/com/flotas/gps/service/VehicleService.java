@@ -3,9 +3,11 @@ package com.flotas.gps.service;
 import com.flotas.gps.dto.VehicleStatusDTO;
 import com.flotas.gps.entity.GpsReading;
 import com.flotas.gps.entity.Vehicle;
+import com.flotas.gps.exception.VehicleNotFoundException;
 import com.flotas.gps.repository.VehicleRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
 import java.util.List;
@@ -24,6 +26,20 @@ public class VehicleService {
         return vehicles.stream()
                 .map(this::mapToStatusDTO)
                 .toList();
+    }
+
+    public VehicleStatusDTO getVehicleById(Long id) {
+        Vehicle vehicle = vehicleRepository.findById(id)
+                .orElseThrow(() -> new VehicleNotFoundException(id.toString()));
+        return mapToStatusDTO(vehicle);
+    }
+
+    @Transactional
+    public void deleteVehicle(Long id) {
+        if (!vehicleRepository.existsById(id)) {
+            throw new VehicleNotFoundException(id.toString());
+        }
+        vehicleRepository.deleteById(id);
     }
 
     private VehicleStatusDTO mapToStatusDTO(Vehicle vehicle) {
