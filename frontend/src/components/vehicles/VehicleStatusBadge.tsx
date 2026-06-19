@@ -5,15 +5,24 @@ interface VehicleStatusBadgeProps {
 const statusConfig = {
   EN_MOVIMIENTO: {
     label: 'En Movimiento',
-    className: 'bg-green-100 text-green-800',
+    dotClass: 'bg-green-500',
+    bgClass: 'bg-green-50 border-green-200',
+    textClass: 'text-green-700',
+    pulse: true,
   },
   DETENIDO: {
     label: 'Detenido',
-    className: 'bg-yellow-100 text-yellow-800',
+    dotClass: 'bg-yellow-500',
+    bgClass: 'bg-yellow-50 border-yellow-200',
+    textClass: 'text-yellow-700',
+    pulse: false,
   },
   SIN_SENAL: {
     label: 'Sin Senal',
-    className: 'bg-red-100 text-red-800',
+    dotClass: 'bg-red-500',
+    bgClass: 'bg-red-50 border-red-200',
+    textClass: 'text-red-700',
+    pulse: true,
   },
 } as const;
 
@@ -22,8 +31,18 @@ export function VehicleStatusBadge({ status }: VehicleStatusBadgeProps) {
 
   return (
     <span
-      className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${config.className}`}
+      className={`inline-flex items-center gap-2 px-3 py-1.5 rounded-lg border text-sm font-medium ${config.bgClass} ${config.textClass}`}
     >
+      <span className="relative flex h-2.5 w-2.5">
+        {config.pulse && (
+          <span
+            className={`absolute inline-flex h-full w-full rounded-full opacity-75 animate-ping ${config.dotClass}`}
+          />
+        )}
+        <span
+          className={`relative inline-flex rounded-full h-2.5 w-2.5 ${config.dotClass}`}
+        />
+      </span>
       {config.label}
     </span>
   );
