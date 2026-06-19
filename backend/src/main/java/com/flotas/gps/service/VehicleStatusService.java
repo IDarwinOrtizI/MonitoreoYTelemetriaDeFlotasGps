@@ -92,6 +92,10 @@ public class VehicleStatusService {
         return calculateStatus(vehicleId, LocalDateTime.now());
     }
 
+    public Optional<GpsReading> getLatestReading(Long vehicleId) {
+        return gpsReadingRepository.findLatestByVehicleId(vehicleId);
+    }
+
     boolean hasCoordinatesChanged(GpsReading current, GpsReading previous) {
         double latDiff = Math.abs(current.getLatitude() - previous.getLatitude());
         double lngDiff = Math.abs(current.getLongitude() - previous.getLongitude());
