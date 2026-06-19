@@ -20,6 +20,11 @@ public interface GpsReadingRepository extends JpaRepository<GpsReading, Long> {
            "WHERE gr2.vehicle.id = :vehicleId)")
     Optional<GpsReading> findLatestByVehicleId(@Param("vehicleId") Long vehicleId);
 
+    @Query("SELECT gr FROM GpsReading gr WHERE gr.vehicle.id = :vehicleId " +
+           "ORDER BY gr.recordedAt DESC")
+    List<GpsReading> findLatestTwoByVehicleId(@Param("vehicleId") Long vehicleId,
+                                               org.springframework.data.domain.Pageable pageable);
+
     List<GpsReading> findByVehicleIdAndRecordedAtBetweenOrderByRecordedAtAsc(
             Long vehicleId, LocalDateTime start, LocalDateTime end);
 

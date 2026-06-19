@@ -54,7 +54,7 @@ public class Vehicle {
     @Enumerated(EnumType.STRING)
     @Column(nullable = false, length = 20)
     @Builder.Default
-    private VehicleStatus status = VehicleStatus.ACTIVE;
+    private VehicleStatus status = VehicleStatus.SIN_SENAL;
 
     @OneToMany(mappedBy = "vehicle", cascade = CascadeType.ALL, orphanRemoval = true)
     @Builder.Default

@@ -3,6 +3,7 @@ package com.flotas.gps.service;
 import com.flotas.gps.dto.GPSRequestDTO;
 import com.flotas.gps.entity.GpsReading;
 import com.flotas.gps.entity.Vehicle;
+import com.flotas.gps.entity.VehicleStatus;
 import com.flotas.gps.exception.VehicleNotFoundException;
 import com.flotas.gps.repository.GpsReadingRepository;
 import com.flotas.gps.repository.VehicleRepository;
@@ -19,6 +20,7 @@ public class GpsService {
 
     private final GpsReadingRepository gpsReadingRepository;
     private final VehicleRepository vehicleRepository;
+    private final VehicleStatusService vehicleStatusService;
 
     @Transactional
     public GpsReading saveGpsReading(GPSRequestDTO request) {
@@ -38,6 +40,12 @@ public class GpsService {
                 .recordedAt(recordedAt)
                 .build();
 
-        return gpsReadingRepository.save(reading);
+        GpsReading savedReading = gpsReadingRepository.save(reading);
+
+        VehicleStatus newStatus = vehicleStatusService.calculateStatus(vehicle.getId(), recordedAt);
+        vehicle.setStatus(newStatus);
+        vehicleRepository.save(vehicle);
+
+        return savedReading;
     }
 }
