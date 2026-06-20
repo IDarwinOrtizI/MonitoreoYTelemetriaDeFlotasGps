@@ -1,48 +1,25 @@
+import styles from './VehicleStatusBadge.module.css';
+
+type Status = 'EN_MOVIMIENTO' | 'DETENIDO' | 'SIN_SENAL';
+
 interface VehicleStatusBadgeProps {
-  status: 'EN_MOVIMIENTO' | 'DETENIDO' | 'SIN_SENAL';
+  status: Status;
+  pulse?: boolean;
 }
 
-const statusConfig = {
-  EN_MOVIMIENTO: {
-    label: 'En Movimiento',
-    dotClass: 'bg-green-500',
-    bgClass: 'bg-green-50 border-green-200',
-    textClass: 'text-green-700',
-    pulse: true,
-  },
-  DETENIDO: {
-    label: 'Detenido',
-    dotClass: 'bg-yellow-500',
-    bgClass: 'bg-yellow-50 border-yellow-200',
-    textClass: 'text-yellow-700',
-    pulse: false,
-  },
-  SIN_SENAL: {
-    label: 'Sin Senal',
-    dotClass: 'bg-red-500',
-    bgClass: 'bg-red-50 border-red-200',
-    textClass: 'text-red-700',
-    pulse: true,
-  },
-} as const;
+const CONFIG: Record<Status, { label: string; className: string; pulse: boolean }> = {
+  EN_MOVIMIENTO: { label: 'En Movimiento', className: styles.moving, pulse: true },
+  DETENIDO:     { label: 'Detenido',      className: styles.stopped, pulse: false },
+  SIN_SENAL:    { label: 'Sin Señal',     className: styles.noSignal, pulse: true },
+};
 
-export function VehicleStatusBadge({ status }: VehicleStatusBadgeProps) {
-  const config = statusConfig[status];
+export function VehicleStatusBadge({ status, pulse }: VehicleStatusBadgeProps) {
+  const config = CONFIG[status];
+  const showPulse = pulse ?? config.pulse;
 
   return (
-    <span
-      className={`inline-flex items-center gap-2 px-3 py-1.5 rounded-lg border text-sm font-medium ${config.bgClass} ${config.textClass}`}
-    >
-      <span className="relative flex h-2.5 w-2.5">
-        {config.pulse && (
-          <span
-            className={`absolute inline-flex h-full w-full rounded-full opacity-75 animate-ping ${config.dotClass}`}
-          />
-        )}
-        <span
-          className={`relative inline-flex rounded-full h-2.5 w-2.5 ${config.dotClass}`}
-        />
-      </span>
+    <span className={`${styles.badge} ${config.className}`}>
+      <span className={`${styles.dot} ${showPulse ? styles.pulse : ''}`} />
       {config.label}
     </span>
   );

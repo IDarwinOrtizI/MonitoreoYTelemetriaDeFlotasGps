@@ -3,21 +3,34 @@ import L from 'leaflet';
 import { useEffect, useMemo } from 'react';
 import { useVehicles } from '../../hooks';
 import { VehicleStatusBadge } from './VehicleStatusBadge';
+import { formatDateTime, formatSpeed } from '../../utils/format';
 import type { VehicleStatus } from '../../types';
 import 'leaflet/dist/leaflet.css';
+import styles from './VehicleMap.module.css';
 
 const STATUS_COLORS: Record<VehicleStatus['status'], string> = {
-  EN_MOVIMIENTO: '#22c55e',
-  DETENIDO: '#eab308',
+  EN_MOVIMIENTO: '#10b981',
+  DETENIDO: '#f59e0b',
   SIN_SENAL: '#ef4444',
 };
+
+const DEFAULT_CENTER: L.LatLngTuple = [4.6090, -74.0810];
+const DEFAULT_ZOOM = 12;
 
 function createMarkerIcon(status: VehicleStatus['status']): L.DivIcon {
   const color = STATUS_COLORS[status];
   return L.divIcon({
-    html: `<div style="width:20px;height:20px;background:${color};border:3px solid white;border-radius:50%;box-shadow:0 2px 6px rgba(0,0,0,0.4);"></div>`,
-    iconSize: [20, 20],
-    iconAnchor: [10, 10],
+    html: `
+      <div style="
+        width:18px;height:18px;
+        background:${color};
+        border:3px solid #0b1220;
+        border-radius:50%;
+        box-shadow:0 0 0 2px ${color}55, 0 4px 8px rgba(0,0,0,0.5);
+      "></div>`,
+    iconSize: [18, 18],
+    iconAnchor: [9, 9],
+    className: 'vehicle-marker',
   });
 }
 
@@ -30,7 +43,6 @@ function FitBounds({ vehicles }: { vehicles: VehicleStatus[] }) {
     );
 
     if (valid.length === 0) return;
-
     if (valid.length === 1) {
       map.setView([valid[0].lastLatitude!, valid[0].lastLongitude!], 15);
       return;
@@ -39,96 +51,107 @@ function FitBounds({ vehicles }: { vehicles: VehicleStatus[] }) {
     const bounds = L.latLngBounds(
       valid.map((v) => [v.lastLatitude!, v.lastLongitude!] as L.LatLngTuple)
     );
-    map.fitBounds(bounds, { padding: [50, 50] });
+    map.fitBounds(bounds, { padding: [60, 60] });
   }, [vehicles, map]);
 
   return null;
 }
 
-function formatDateTime(dateStr: string | null): string {
-  if (!dateStr) return '-';
-  return new Date(dateStr).toLocaleString('es-PE', {
-    day: '2-digit',
-    month: '2-digit',
-    year: 'numeric',
-    hour: '2-digit',
-    minute: '2-digit',
-    second: '2-digit',
-  });
-}
+const ICON_PIN = (
+  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+    <path d="M12 2C8 2 5 5 5 9c0 5 7 13 7 13s7-8 7-13c0-4-3-7-7-7z" />
+    <circle cx="12" cy="9" r="2.5" />
+  </svg>
+);
 
 export function VehicleMap() {
   const { vehicles, lastUpdated } = useVehicles();
 
   const validVehicles = useMemo(
-    () =>
-      vehicles.filter(
-        (v) => v.lastLatitude !== null && v.lastLongitude !== null
-      ),
+    () => vehicles.filter((v) => v.lastLatitude !== null && v.lastLongitude !== null),
     [vehicles]
   );
 
-  const defaultCenter: L.LatLngTuple = [-12.0464, -77.0428];
-
-  const mapKey = useMemo(() => `map-${Date.now()}`, [vehicles.length > 0]);
-
   return (
-    <div className="relative rounded-lg overflow-hidden border border-gray-200">
-      {lastUpdated && (
-        <div className="absolute top-2 right-2 z-[1000] bg-white/90 px-3 py-1.5 rounded-lg shadow-md text-xs text-gray-600 backdrop-blur-sm">
-          Actualizado: {lastUpdated.toLocaleTimeString('es-PE')}
+    <section className={styles.wrapper} aria-label="Mapa de vehículos">
+      <header className={styles.header}>
+        <div className={styles.titleGroup}>
+          <div className={styles.titleIcon} aria-hidden="true">{ICON_PIN}</div>
+          <div className={styles.titleText}>
+            <h2 className={styles.title}>Ubicación en tiempo real</h2>
+            <span className={styles.subtitle}>{validVehicles.length} vehículos en mapa</span>
+          </div>
         </div>
-      )}
 
-      <MapContainer
-        key={mapKey}
-        center={defaultCenter}
-        zoom={13}
-        style={{ height: '500px', width: '100%' }}
-        scrollWheelZoom={true}
-      >
-        <TileLayer
-          attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
-          url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
-        />
+        {lastUpdated && (
+          <div className={styles.lastUpdate}>
+            <span className={styles.liveDot} />
+            <span>Actualizado {lastUpdated.toLocaleTimeString('es-CO', { hour: '2-digit', minute: '2-digit', second: '2-digit' })}</span>
+          </div>
+        )}
+      </header>
 
-        <FitBounds vehicles={vehicles} />
-
-        {validVehicles.map((vehicle) => (
-          <Marker
-            key={vehicle.id}
-            position={[vehicle.lastLatitude!, vehicle.lastLongitude!]}
-            icon={createMarkerIcon(vehicle.status)}
+      <div className={styles.mapContainer}>
+        <div className={styles.map}>
+          <MapContainer
+            center={DEFAULT_CENTER}
+            zoom={DEFAULT_ZOOM}
+            scrollWheelZoom
+            style={{ height: '100%', width: '100%' }}
           >
-            <Popup>
-              <div style={{ textAlign: 'center', padding: '4px', minWidth: '140px' }}>
-                <div style={{ fontWeight: 700, fontSize: '14px', marginBottom: '6px' }}>
-                  Vehiculo #{vehicle.id}
-                </div>
-                <div style={{ marginBottom: '6px' }}>
-                  <VehicleStatusBadge status={vehicle.status} />
-                </div>
-                {vehicle.lastSpeed !== null && (
-                  <div style={{ fontSize: '12px', color: '#6b7280', marginBottom: '2px' }}>
-                    Velocidad: {vehicle.lastSpeed.toFixed(1)} km/h
-                  </div>
-                )}
-                {vehicle.lastRecordedAt && (
-                  <div style={{ fontSize: '11px', color: '#9ca3af' }}>
-                    {formatDateTime(vehicle.lastRecordedAt)}
-                  </div>
-                )}
-              </div>
-            </Popup>
-          </Marker>
-        ))}
-      </MapContainer>
+            <TileLayer
+              attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
+              url="https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png"
+            />
 
-      {validVehicles.length === 0 && (
-        <div className="absolute inset-0 flex items-center justify-center bg-gray-50/80 z-[999] pointer-events-none">
-          <span className="text-gray-400 text-sm">Sin vehiculos con posicion GPS</span>
+            <FitBounds vehicles={vehicles} />
+
+            {validVehicles.map((vehicle) => (
+              <Marker
+                key={vehicle.id}
+                position={[vehicle.lastLatitude!, vehicle.lastLongitude!]}
+                icon={createMarkerIcon(vehicle.status)}
+              >
+                <Popup>
+                  <div style={{ minWidth: 180 }}>
+                    <div style={{ fontWeight: 700, fontSize: 14, marginBottom: 8, color: '#94a3b8' }}>
+                      Vehículo #{vehicle.id}
+                    </div>
+                    <div style={{ marginBottom: 10 }}>
+                      <VehicleStatusBadge status={vehicle.status} />
+                    </div>
+                    {vehicle.lastSpeed !== null && (
+                      <div style={{ fontSize: 12, color: '#94a3b8', marginBottom: 4 }}>
+                        Velocidad: <strong style={{ color: '#94a3b8' }}>{formatSpeed(vehicle.lastSpeed)}</strong>
+                      </div>
+                    )}
+                    {vehicle.lastLatitude !== null && vehicle.lastLongitude !== null && (
+                      <div style={{ fontSize: 12, color: '#94a3b8', marginBottom: 4, fontFamily: 'var(--font-mono)' }}>
+                        {vehicle.lastLatitude.toFixed(5)}, {vehicle.lastLongitude.toFixed(5)}
+                      </div>
+                    )}
+                    {vehicle.lastRecordedAt && (
+                      <div style={{ fontSize: 11, color: '#64748b', marginTop: 6 }}>
+                        {formatDateTime(vehicle.lastRecordedAt)}
+                      </div>
+                    )}
+                  </div>
+                </Popup>
+              </Marker>
+            ))}
+          </MapContainer>
         </div>
-      )}
-    </div>
+
+        {validVehicles.length === 0 && (
+          <div className={styles.empty}>
+            <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
+              <path d="M12 2C8 2 5 5 5 9c0 5 7 13 7 13s7-8 7-13c0-4-3-7-7-7z" />
+              <circle cx="12" cy="9" r="2.5" />
+            </svg>
+            <span>Sin vehículos con posición GPS</span>
+          </div>
+        )}
+      </div>
+    </section>
   );
 }

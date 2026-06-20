@@ -1,0 +1,62 @@
+.badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 4px 10px;
+  border-radius: var(--radius-pill);
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.3px;
+  text-transform: uppercase;
+  border: 1px solid transparent;
+  white-space: nowrap;
+  transition: background var(--transition-base), border-color var(--transition-base);
+}
+
+.dot {
+  position: relative;
+  display: inline-flex;
+  width: 8px;
+  height: 8px;
+}
+
+.dot::before,
+.dot::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: 50%;
+}
+
+.dot::after {
+  z-index: 1;
+}
+
+.dot.pulse::before {
+  animation: pulseDot 1.6s ease-in-out infinite;
+  opacity: 0.6;
+}
+
+.moving {
+  background: var(--color-moving-soft);
+  color: var(--color-moving);
+  border-color: var(--color-moving-border);
+}
+.moving .dot::before { background: var(--color-moving); }
+.moving .dot::after  { background: var(--color-moving); }
+
+.stopped {
+  background: var(--color-stopped-soft);
+  color: var(--color-stopped);
+  border-color: var(--color-stopped-border);
+}
+.stopped .dot::before { background: var(--color-stopped); }
+.stopped .dot::after  { background: var(--color-stopped); }
+
+.noSignal {
+  background: var(--color-no-signal-soft);
+  color: var(--color-no-signal);
+  border-color: var(--color-no-signal-border);
+}
+.noSignal .dot::before { background: var(--color-no-signal); }
+.noSignal .dot::after  { background: var(--color-no-signal); }

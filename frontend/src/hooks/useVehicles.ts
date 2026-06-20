@@ -26,10 +26,11 @@ export function useVehicles(poll = true) {
   }, []);
 
   useEffect(() => {
+    // Initial fetch on mount + polling. The setState calls inside fetchVehicles
+    // are inside an async callback, not synchronous, so this is safe.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     fetchVehicles();
-  }, [fetchVehicles]);
 
-  useEffect(() => {
     if (!poll) return;
 
     intervalRef.current = setInterval(fetchVehicles, POLL_INTERVAL);

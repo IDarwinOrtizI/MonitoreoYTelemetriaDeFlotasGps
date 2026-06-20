@@ -1,11 +1,13 @@
-import { Layout, VehicleMap, VehicleList } from './components';
+import { Layout, VehicleMap, VehicleTable, StatisticsCards } from './components';
+import styles from './styles/layout.module.css';
 
 function App() {
   return (
     <Layout>
-      <div className="space-y-6">
+      <StatisticsCards />
+      <div className={styles.grid}>
         <VehicleMap />
-        <VehicleList />
+        <VehicleTable />
       </div>
     </Layout>
   );

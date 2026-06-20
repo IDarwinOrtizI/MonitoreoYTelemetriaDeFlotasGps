@@ -32,20 +32,20 @@ const vehicles = [
   {
     id: 'GPS-001',
     name: 'Vehiculo 1 (Ruta Norte)',
-    lat: -12.0464,
-    lng: -77.0428,
+    lat: 4.6500,
+    lng: -74.0500,
     speed: 60,
     behavior: 'moving',
     ignition: true,
     // Direccion de movimiento: Sureste
-    dirLat: 0.0003,
+    dirLat: -0.0003,
     dirLng: 0.0002,
   },
   {
     id: 'GPS-002',
     name: 'Vehiculo 2 (Detenido)',
-    lat: -12.0510,
-    lng: -77.0400,
+    lat: 4.6090,
+    lng: -74.0810,
     speed: 0,
     behavior: 'stopped',
     ignition: true,
@@ -53,13 +53,13 @@ const vehicles = [
   {
     id: 'GPS-003',
     name: 'Vehiculo 3 (Ruta Sur)',
-    lat: -12.0490,
-    lng: -77.0450,
+    lat: 4.5800,
+    lng: -74.1200,
     speed: 45,
     behavior: 'moving',
     ignition: true,
     // Direccion de movimiento: Noroeste (ruta diferente a GPS-001)
-    dirLat: -0.0002,
+    dirLat: 0.0002,
     dirLng: -0.0003,
   },
 ];
@@ -196,9 +196,9 @@ function printHeader() {
   console.log(`  Interval:     ${MIN_INTERVAL / 1000}s - ${MAX_INTERVAL / 1000}s`);
   console.log(`  Invalid rate: ${INVALID_RATE * 100}%`);
   console.log('='.repeat(72));
-  console.log(`  ${c.green}[GPS-001] MOVING${c.reset}   Ruta Norte (Sureste)`);
-  console.log(`  ${c.yellow}[GPS-002] STOPPED${c.reset}  Detenido (misma coordenada)`);
-  console.log(`  ${c.green}[GPS-003] MOVING${c.reset}   Ruta Sur (Noroeste)`);
+  console.log(`  ${c.green}[GPS-001] MOVING${c.reset}   Chapinero → Sureste`);
+  console.log(`  ${c.yellow}[GPS-002] STOPPED${c.reset}  La Candelaria (Centro)`);
+  console.log(`  ${c.green}[GPS-003] MOVING${c.reset}   Kennedy → Noroeste`);
   console.log('-'.repeat(72) + '\n');
 }
 
