@@ -18,20 +18,24 @@ import java.util.Optional;
 @Slf4j
 public class VehicleStatusService {
 
-    private static final long MOVING_THRESHOLD_SECONDS = 60;
-    private static final long STOPPED_THRESHOLD_SECONDS = 60;
     private static final long NO_SIGNAL_THRESHOLD_SECONDS = 120;
 
     private static final double MIN_COORDINATE_DIFFERENCE = 0.0001;
 
     private final GpsReadingRepository gpsReadingRepository;
 
+    /**
+     * Calcula el estado del vehiculo en tiempo real basado en:
+     *   1. SIN_SENAL  → No se reciben coordenadas en mas de 120 segundos
+     *   2. EN_MOVIMIENTO → Las coordenadas cambiaron respecto a la lectura anterior
+     *   3. DETENIDO   → Las coordenadas son iguales (sin movimiento)
+     */
     public VehicleStatus calculateStatus(Long vehicleId, LocalDateTime currentTime) {
         List<GpsReading> latestReadings = gpsReadingRepository
                 .findLatestTwoByVehicleId(vehicleId, PageRequest.of(0, 2));
 
         if (latestReadings.isEmpty()) {
-            log.debug("No hay lecturas GPS para vehículo {}", vehicleId);
+            log.debug("[{}] SIN_SENAL - No hay lecturas GPS", vehicleId);
             return VehicleStatus.SIN_SENAL;
         }
 
@@ -39,40 +43,35 @@ public class VehicleStatusService {
         long secondsSinceLastUpdate = ChronoUnit.SECONDS.between(
                 latestReading.getRecordedAt(), currentTime);
 
+        // 1. SIN_SENAL: Sin coordenadas en mas de 120 segundos
         if (secondsSinceLastUpdate > NO_SIGNAL_THRESHOLD_SECONDS) {
-            log.debug("Vehículo {} sin señal por {} segundos",
+            log.info("[{}] SIN_SENAL - Ultima lectura hace {}s (limite: 120s)",
                     vehicleId, secondsSinceLastUpdate);
             return VehicleStatus.SIN_SENAL;
         }
 
+        // Si solo hay una lectura, no se puede comparar → EN_MOVIMIENTO
         if (latestReadings.size() < 2) {
-            log.debug("Vehículo {} con solo una lectura, estado: EN_MOVIMIENTO", vehicleId);
+            log.debug("[{}] EN_MOVIMIENTO - Solo una lectura disponible", vehicleId);
             return VehicleStatus.EN_MOVIMIENTO;
         }
 
         GpsReading previousReading = latestReadings.get(1);
+
+        // 2. EN_MOVIMIENTO: Las coordenadas cambiaron
+        if (hasCoordinatesChanged(latestReading, previousReading)) {
+            log.debug("[{}] EN_MOVIMIENTO - Coordenadas cambiaron: [{}, {}] -> [{}, {}]",
+                    vehicleId,
+                    previousReading.getLatitude(), previousReading.getLongitude(),
+                    latestReading.getLatitude(), latestReading.getLongitude());
+            return VehicleStatus.EN_MOVIMIENTO;
+        }
+
+        // 3. DETENIDO: Las coordenadas son iguales
         long secondsBetweenReadings = ChronoUnit.SECONDS.between(
                 previousReading.getRecordedAt(), latestReading.getRecordedAt());
-
-        if (secondsBetweenReadings > STOPPED_THRESHOLD_SECONDS) {
-            boolean sameLocation = isSameLocation(latestReading, previousReading);
-            if (sameLocation) {
-                log.debug("Vehículo {} detenido en misma ubicación por {} segundos",
-                        vehicleId, secondsBetweenReadings);
-                return VehicleStatus.DETENIDO;
-            }
-        }
-
-        boolean hasMoved = hasCoordinatesChanged(latestReading, previousReading);
-        if (hasMoved) {
-            log.debug("Vehículo {} en movimiento, coordenadas cambiaron", vehicleId);
-            return VehicleStatus.EN_MOVIMIENTO;
-        }
-
-        if (secondsSinceLastUpdate <= MOVING_THRESHOLD_SECONDS) {
-            return VehicleStatus.EN_MOVIMIENTO;
-        }
-
+        log.debug("[{}] DETENIDO - Misma ubicacion, {}s entre lecturas, {}s desde ultima actualizacion",
+                vehicleId, secondsBetweenReadings, secondsSinceLastUpdate);
         return VehicleStatus.DETENIDO;
     }
 

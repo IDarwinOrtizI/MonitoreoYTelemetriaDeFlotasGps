@@ -3,7 +3,6 @@ package com.flotas.gps.service;
 import com.flotas.gps.dto.GPSRequestDTO;
 import com.flotas.gps.entity.GpsReading;
 import com.flotas.gps.entity.Vehicle;
-import com.flotas.gps.entity.VehicleStatus;
 import com.flotas.gps.exception.VehicleNotFoundException;
 import com.flotas.gps.repository.GpsReadingRepository;
 import com.flotas.gps.repository.VehicleRepository;
@@ -21,7 +20,6 @@ import java.util.Optional;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.*;
 
 @ExtendWith(MockitoExtension.class)
@@ -34,9 +32,6 @@ class GpsServiceTest {
     @Mock
     private VehicleRepository vehicleRepository;
 
-    @Mock
-    private VehicleStatusService vehicleStatusService;
-
     @InjectMocks
     private GpsService gpsService;
 
@@ -48,7 +43,6 @@ class GpsServiceTest {
                 .id(1L)
                 .plateNumber("ABC-123")
                 .gpsDeviceId("GPS-001")
-                .status(VehicleStatus.EN_MOVIMIENTO)
                 .build();
     }
 
@@ -85,8 +79,6 @@ class GpsServiceTest {
                         reading.setId(1L);
                         return reading;
                     });
-            when(vehicleStatusService.calculateStatus(eq(1L), any(java.time.LocalDateTime.class)))
-                    .thenReturn(VehicleStatus.EN_MOVIMIENTO);
 
             GpsReading result = gpsService.saveGpsReading(request);
 
@@ -94,7 +86,7 @@ class GpsServiceTest {
             assertThat(result.getLatitude()).isEqualTo(-12.0);
             assertThat(result.getLongitude()).isEqualTo(-77.0);
             assertThat(result.getSpeed()).isEqualTo(60.0);
-            verify(vehicleRepository).save(vehicle);
+            verify(vehicleRepository, never()).save(any());
         }
 
         @Test
@@ -111,8 +103,6 @@ class GpsServiceTest {
                     .thenReturn(Optional.of(vehicle));
             when(gpsReadingRepository.save(any(GpsReading.class)))
                     .thenAnswer(inv -> inv.getArgument(0));
-            when(vehicleStatusService.calculateStatus(eq(1L), any(java.time.LocalDateTime.class)))
-                    .thenReturn(VehicleStatus.EN_MOVIMIENTO);
 
             GpsReading result = gpsService.saveGpsReading(request);
 
@@ -123,20 +113,17 @@ class GpsServiceTest {
         }
 
         @Test
-        @DisplayName("Debe actualizar el estado del vehiculo despues de guardar")
-        void debeActualizarEstadoVehiculo() {
+        @DisplayName("No debe guardar el vehiculo (solo la lectura)")
+        void noDebeGuardarVehiculo() {
             GPSRequestDTO request = buildRequest();
             when(vehicleRepository.findByGpsDeviceId("GPS-001"))
                     .thenReturn(Optional.of(vehicle));
             when(gpsReadingRepository.save(any(GpsReading.class)))
                     .thenAnswer(inv -> inv.getArgument(0));
-            when(vehicleStatusService.calculateStatus(eq(1L), any(java.time.LocalDateTime.class)))
-                    .thenReturn(VehicleStatus.DETENIDO);
 
             gpsService.saveGpsReading(request);
 
-            assertThat(vehicle.getStatus()).isEqualTo(VehicleStatus.DETENIDO);
-            verify(vehicleRepository).save(vehicle);
+            verify(vehicleRepository, never()).save(any());
         }
     }
 
@@ -160,7 +147,6 @@ class GpsServiceTest {
                     .hasMessageContaining("GPS-001");
 
             verify(gpsReadingRepository, never()).save(any());
-            verify(vehicleRepository, never()).save(any());
         }
     }
 }

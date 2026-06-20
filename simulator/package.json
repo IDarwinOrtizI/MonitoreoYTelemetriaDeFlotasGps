@@ -1,0 +1,12 @@
+{
+  "name": "gps-simulator",
+  "version": "1.0.0",
+  "description": "Simulador de vehiculos GPS para el sistema de monitoreo",
+  "type": "module",
+  "scripts": {
+    "start": "node simulator.js"
+  },
+  "dependencies": {
+    "axios": "^1.7.0"
+  }
+}

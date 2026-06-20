@@ -61,7 +61,7 @@ class VehicleStatusServiceTest {
     }
 
     // ================================================================
-    // SIN_SENAL
+    // SIN_SENAL: Sin coordenadas en mas de 120 segundos
     // ================================================================
 
     @Nested
@@ -104,14 +104,28 @@ class VehicleStatusServiceTest {
 
             assertThat(status).isNotEqualTo(VehicleStatus.SIN_SENAL);
         }
+
+        @Test
+        @DisplayName("Debe retornar SIN_SENAL con dos lecturas viejas (>120s)")
+        void dosLecturasViejas_DebeRetornarSinSenal() {
+            GpsReading previous = buildReading(-12.0, -77.0, 50.0, now.minusSeconds(200));
+            GpsReading current = buildReading(-12.0, -77.0, 0.0, now.minusSeconds(130));
+
+            when(gpsReadingRepository.findLatestTwoByVehicleId(eq(1L), any()))
+                    .thenReturn(List.of(current, previous));
+
+            VehicleStatus status = vehicleStatusService.calculateStatus(1L, now);
+
+            assertThat(status).isEqualTo(VehicleStatus.SIN_SENAL);
+        }
     }
 
     // ================================================================
-    // EN_MOVIMIENTO
+    // EN_MOVIMIENTO: Coordenadas cambiaron
     // ================================================================
 
     @Nested
-    @DisplayName("EN_MOVIMIENTO - Vehiculo en movimiento")
+    @DisplayName("EN_MOVIMIENTO - Coordenadas cambiaron")
     class EnMovimiento {
 
         @Test
@@ -142,10 +156,24 @@ class VehicleStatusServiceTest {
         }
 
         @Test
-        @DisplayName("Debe retornar EN_MOVIMIENTO cuando la lectura es reciente y coordenadas iguales")
-        void coordenadasIgualesPeroLecturaReciente_DebeRetornarEnMovimiento() {
-            GpsReading previous = buildReading(-12.0, -77.0, 50.0, now.minusSeconds(70));
-            GpsReading current = buildReading(-12.0, -77.0, 0.0, now.minusSeconds(10));
+        @DisplayName("Debe retornar EN_MOVIMIENTO cuando solo cambio latitud")
+        void soloLatitudCambio_DebeRetornarEnMovimiento() {
+            GpsReading previous = buildReading(-12.0, -77.0, 50.0, now.minusSeconds(10));
+            GpsReading current = buildReading(-12.001, -77.0, 55.0, now.minusSeconds(5));
+
+            when(gpsReadingRepository.findLatestTwoByVehicleId(eq(1L), any()))
+                    .thenReturn(List.of(current, previous));
+
+            VehicleStatus status = vehicleStatusService.calculateStatus(1L, now);
+
+            assertThat(status).isEqualTo(VehicleStatus.EN_MOVIMIENTO);
+        }
+
+        @Test
+        @DisplayName("Debe retornar EN_MOVIMIENTO cuando solo cambio longitud")
+        void soloLongitudCambio_DebeRetornarEnMovimiento() {
+            GpsReading previous = buildReading(-12.0, -77.0, 50.0, now.minusSeconds(10));
+            GpsReading current = buildReading(-12.0, -77.001, 55.0, now.minusSeconds(5));
 
             when(gpsReadingRepository.findLatestTwoByVehicleId(eq(1L), any()))
                     .thenReturn(List.of(current, previous));
@@ -157,18 +185,18 @@ class VehicleStatusServiceTest {
     }
 
     // ================================================================
-    // DETENIDO
+    // DETENIDO: Coordenadas iguales (sin movimiento)
     // ================================================================
 
     @Nested
-    @DisplayName("DETENIDO - Vehiculo detenido")
+    @DisplayName("DETENIDO - Coordenadas iguales")
     class Detenido {
 
         @Test
-        @DisplayName("Debe retornar DETENIDO cuando esta en la misma ubicacion por mas de 60 segundos")
-        void mismaUbicacionMas60Segundos_DebeRetornarDetenido() {
-            GpsReading previous = buildReading(-12.0, -77.0, 50.0, now.minusSeconds(130));
-            GpsReading current = buildReading(-12.0, -77.0, 0.0, now.minusSeconds(60));
+        @DisplayName("Debe retornar DETENIDO cuando coordenadas son iguales (simulador detenido)")
+        void coordenadasIguales_DebeRetornarDetenido() {
+            GpsReading previous = buildReading(-12.0, -77.0, 50.0, now.minusSeconds(10));
+            GpsReading current = buildReading(-12.0, -77.0, 0.0, now.minusSeconds(5));
 
             when(gpsReadingRepository.findLatestTwoByVehicleId(eq(1L), any()))
                     .thenReturn(List.of(current, previous));
@@ -179,10 +207,38 @@ class VehicleStatusServiceTest {
         }
 
         @Test
-        @DisplayName("Debe retornar DETENIDO cuando coordenadas iguales y tiempo entre lecturas > 60s")
-        void coordenadasIgualesTiempoExcedido_DebeRetornarDetenido() {
+        @DisplayName("Debe retornar DETENIDO cuando coordenadas iguales con tiempo corto entre lecturas")
+        void coordenadasIgualesTiempoCorto_DebeRetornarDetenido() {
+            GpsReading previous = buildReading(-12.0, -77.0, 30.0, now.minusSeconds(4));
+            GpsReading current = buildReading(-12.0, -77.0, 0.0, now.minusSeconds(1));
+
+            when(gpsReadingRepository.findLatestTwoByVehicleId(eq(1L), any()))
+                    .thenReturn(List.of(current, previous));
+
+            VehicleStatus status = vehicleStatusService.calculateStatus(1L, now);
+
+            assertThat(status).isEqualTo(VehicleStatus.DETENIDO);
+        }
+
+        @Test
+        @DisplayName("Debe retornar DETENIDO cuando coordenadas iguales con tiempo largo entre lecturas")
+        void coordenadasIgualesTiempoLargo_DebeRetornarDetenido() {
             GpsReading previous = buildReading(-12.0, -77.0, 30.0, now.minusSeconds(200));
             GpsReading current = buildReading(-12.0, -77.0, 0.0, now.minusSeconds(100));
+
+            when(gpsReadingRepository.findLatestTwoByVehicleId(eq(1L), any()))
+                    .thenReturn(List.of(current, previous));
+
+            VehicleStatus status = vehicleStatusService.calculateStatus(1L, now);
+
+            assertThat(status).isEqualTo(VehicleStatus.DETENIDO);
+        }
+
+        @Test
+        @DisplayName("Debe retornar DETENIDO cuando coordenadas iguales con velocidad 0")
+        void coordenadasIgualesVelocidadCero_DebeRetornarDetenido() {
+            GpsReading previous = buildReading(-12.0, -77.0, 60.0, now.minusSeconds(30));
+            GpsReading current = buildReading(-12.0, -77.0, 0.0, now.minusSeconds(5));
 
             when(gpsReadingRepository.findLatestTwoByVehicleId(eq(1L), any()))
                     .thenReturn(List.of(current, previous));
@@ -221,17 +277,6 @@ class VehicleStatusServiceTest {
             boolean changed = vehicleStatusService.hasCoordinatesChanged(current, previous);
 
             assertThat(changed).isFalse();
-        }
-
-        @Test
-        @DisplayName("Debe detectar movimiento solo en longitud")
-        void cambioSoloLongitud_DebeDetectarMovimiento() {
-            GpsReading previous = buildReading(-12.0, -77.0, 50.0, now.minusSeconds(30));
-            GpsReading current = buildReading(-12.0, -77.001, 50.0, now.minusSeconds(5));
-
-            boolean changed = vehicleStatusService.hasCoordinatesChanged(current, previous);
-
-            assertThat(changed).isTrue();
         }
 
         @Test
@@ -279,12 +324,21 @@ class VehicleStatusServiceTest {
 
             assertThat(status).isNotEqualTo(VehicleStatus.SIN_SENAL);
         }
+    }
+
+    // ================================================================
+    // Escenario real: Simulador con vehiculo detenido
+    // ================================================================
+
+    @Nested
+    @DisplayName("Escenario real - Simulador")
+    class EscenarioSimulador {
 
         @Test
-        @DisplayName("Coordenadas iguales, 61 segundos entre lecturas -> DETENIDO")
-        void coordenadasIguales61Segundos_DebeRetornarDetenido() {
-            GpsReading previous = buildReading(-12.0, -77.0, 50.0, now.minusSeconds(61));
-            GpsReading current = buildReading(-12.0, -77.0, 0.0, now);
+        @DisplayName("Vehiculo detenido en simulador: coordenadas iguales cada 3s -> DETENIDO")
+        void vehiculoDetenidoSimulador_DebeRetornarDetenido() {
+            GpsReading previous = buildReading(-12.0510, -77.0400, 50.0, now.minusSeconds(4));
+            GpsReading current = buildReading(-12.0510, -77.0400, 0.0, now.minusSeconds(1));
 
             when(gpsReadingRepository.findLatestTwoByVehicleId(eq(1L), any()))
                     .thenReturn(List.of(current, previous));
@@ -295,10 +349,10 @@ class VehicleStatusServiceTest {
         }
 
         @Test
-        @DisplayName("Coordenadas iguales, 59 segundos entre lecturas -> EN_MOVIMIENTO (lectura reciente)")
-        void coordenadasIguales59Segundos_DebeRetornarEnMovimiento() {
-            GpsReading previous = buildReading(-12.0, -77.0, 50.0, now.minusSeconds(59));
-            GpsReading current = buildReading(-12.0, -77.0, 0.0, now);
+        @DisplayName("Vehiculo movil en simulador: coordenadas diferentes cada 3s -> EN_MOVIMIENTO")
+        void vehiculoMovilSimulador_DebeRetornarEnMovimiento() {
+            GpsReading previous = buildReading(-12.0464, -77.0428, 60.0, now.minusSeconds(4));
+            GpsReading current = buildReading(-12.0461, -77.0430, 65.0, now.minusSeconds(1));
 
             when(gpsReadingRepository.findLatestTwoByVehicleId(eq(1L), any()))
                     .thenReturn(List.of(current, previous));
@@ -306,6 +360,19 @@ class VehicleStatusServiceTest {
             VehicleStatus status = vehicleStatusService.calculateStatus(1L, now);
 
             assertThat(status).isEqualTo(VehicleStatus.EN_MOVIMIENTO);
+        }
+
+        @Test
+        @DisplayName("Simulador detenido por 3 minutos -> SIN_SENAL")
+        void simuladorDetenido3Minutos_DebeRetornarSinSenal() {
+            GpsReading lastReading = buildReading(-12.0510, -77.0400, 0.0, now.minusSeconds(181));
+
+            when(gpsReadingRepository.findLatestTwoByVehicleId(eq(1L), any()))
+                    .thenReturn(List.of(lastReading));
+
+            VehicleStatus status = vehicleStatusService.calculateStatus(1L, now);
+
+            assertThat(status).isEqualTo(VehicleStatus.SIN_SENAL);
         }
     }
 
