@@ -31,12 +31,15 @@ const c = {
 const vehicles = [
   {
     id: 'GPS-001',
-    name: 'Vehiculo 1 (Movil)',
+    name: 'Vehiculo 1 (Ruta Norte)',
     lat: -12.0464,
     lng: -77.0428,
     speed: 60,
     behavior: 'moving',
     ignition: true,
+    // Direccion de movimiento: Sureste
+    dirLat: 0.0003,
+    dirLng: 0.0002,
   },
   {
     id: 'GPS-002',
@@ -49,12 +52,15 @@ const vehicles = [
   },
   {
     id: 'GPS-003',
-    name: 'Vehiculo 3 (Intermitente)',
+    name: 'Vehiculo 3 (Ruta Sur)',
     lat: -12.0490,
     lng: -77.0450,
-    speed: 40,
-    behavior: 'intermittent',
+    speed: 45,
+    behavior: 'moving',
     ignition: true,
+    // Direccion de movimiento: Noroeste (ruta diferente a GPS-001)
+    dirLat: -0.0002,
+    dirLng: -0.0003,
   },
 ];
 
@@ -63,20 +69,20 @@ const vehicles = [
 // ============================================================
 
 function moveVehicle(vehicle) {
-  if (vehicle.behavior === 'stopped') return vehicle;
-
-  if (vehicle.behavior === 'intermittent' && Math.random() > 0.5) {
-    return { ...vehicle, speed: 0 };
+  // Vehiculo detenido: nunca cambia coordenadas
+  if (vehicle.behavior === 'stopped') {
+    return { ...vehicle };
   }
 
-  const angle = Math.random() * 2 * Math.PI;
-  const distance = 0.0005 + Math.random() * 0.001;
+  // Vehiculo en movimiento: aplica delta constante + variacion aleatoria
+  const jitterLat = (Math.random() - 0.5) * 0.0001;
+  const jitterLng = (Math.random() - 0.5) * 0.0001;
 
   return {
     ...vehicle,
-    lat: vehicle.lat + Math.cos(angle) * distance,
-    lng: vehicle.lng + Math.sin(angle) * distance,
-    speed: 30 + Math.random() * 70,
+    lat: vehicle.lat + vehicle.dirLat + jitterLat,
+    lng: vehicle.lng + vehicle.dirLng + jitterLng,
+    speed: 40 + Math.random() * 40,
   };
 }
 
@@ -134,11 +140,12 @@ async function sendGpsData(vehicle) {
 
     if (isInvalid) {
       stats.invalid++;
-      console.log(`${c.gray}${ts}${c.reset} ${label} ${c.yellow}⚠ Invalid accepted${c.reset}`);
+      console.log(`${c.gray}${ts}${c.reset} ${label} ${c.yellow}⚠ Invalid request${c.reset}`);
     } else {
-      const sColor = vehicle.speed > 0 ? c.green : c.yellow;
-      const sText = vehicle.speed > 0 ? 'MOVING' : 'STOPPED';
-      console.log(`${c.gray}${ts}${c.reset} ${label} ${sColor}✓ ${sText}${c.reset} | ${request.lat}, ${request.lng} | ${request.speed} km/h`);
+      const isMoving = vehicle.behavior === 'moving';
+      const sColor = isMoving ? c.green : c.yellow;
+      const sText = isMoving ? 'MOVING' : 'STOPPED';
+      console.log(`${c.gray}${ts}${c.reset} ${label} ${sColor}${sText}${c.reset} | ${request.lat}, ${request.lng} | ${request.speed} km/h`);
     }
   } catch (error) {
     stats.sent++;
@@ -151,14 +158,14 @@ async function sendGpsData(vehicle) {
     } else if (status === 404) {
       stats.notFound++;
       stats.failed++;
-      console.log(`${c.gray}${ts}${c.reset} ${label} ${c.red}✗ 404 Vehicle not found${c.reset} | ${c.dim}${detail}${c.reset}`);
+      console.log(`${c.gray}${ts}${c.reset} ${label} ${c.red}✗ 404 NotFound${c.reset} | ${c.dim}${detail}${c.reset}`);
     } else if (status === 400) {
       stats.invalid++;
       stats.failed++;
-      console.log(`${c.gray}${ts}${c.reset} ${label} ${c.yellow}✗ 400 Validation error${c.reset} | ${c.dim}${detail}${c.reset}`);
+      console.log(`${c.gray}${ts}${c.reset} ${label} ${c.yellow}✗ 400 Validation${c.reset} | ${c.dim}${detail}${c.reset}`);
     } else {
       stats.failed++;
-      console.log(`${c.gray}${ts}${c.reset} ${label} ${c.red}✗ ${status} Error${c.reset} | ${c.dim}${detail}${c.reset}`);
+      console.log(`${c.gray}${ts}${c.reset} ${label} ${c.red}✗ ${status}${c.reset} | ${c.dim}${detail}${c.reset}`);
     }
   }
 }
@@ -189,7 +196,9 @@ function printHeader() {
   console.log(`  Interval:     ${MIN_INTERVAL / 1000}s - ${MAX_INTERVAL / 1000}s`);
   console.log(`  Invalid rate: ${INVALID_RATE * 100}%`);
   console.log('='.repeat(72));
-  console.log(`  ${c.green}● MOVING${c.reset}  ${c.yellow}● STOPPED${c.reset}  ${c.red}● ERROR${c.reset}  ${c.gray}● CONN ERROR${c.reset}`);
+  console.log(`  ${c.green}[GPS-001] MOVING${c.reset}   Ruta Norte (Sureste)`);
+  console.log(`  ${c.yellow}[GPS-002] STOPPED${c.reset}  Detenido (misma coordenada)`);
+  console.log(`  ${c.green}[GPS-003] MOVING${c.reset}   Ruta Sur (Noroeste)`);
   console.log('-'.repeat(72) + '\n');
 }
 
@@ -217,9 +226,6 @@ async function main() {
     process.exit(1);
   }
   console.log(`${c.green}Backend conectado${c.reset}\n`);
-
-  console.log(`${c.yellow}NOTA: Los vehiculos GPS-001, GPS-002, GPS-003 deben existir en la BD.`);
-  console.log(`Si ves errores 404, crea los vehiculos primero desde la base de datos.\n`);
 
   const scheduleNext = (vehicle) => {
     const delay = MIN_INTERVAL + Math.random() * (MAX_INTERVAL - MIN_INTERVAL);

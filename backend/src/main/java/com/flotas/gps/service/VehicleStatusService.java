@@ -9,6 +9,7 @@ import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDateTime;
+import java.time.ZoneOffset;
 import java.time.temporal.ChronoUnit;
 import java.util.List;
 import java.util.Optional;
@@ -88,7 +89,7 @@ public class VehicleStatusService {
     }
 
     public VehicleStatus calculateStatus(Long vehicleId) {
-        return calculateStatus(vehicleId, LocalDateTime.now());
+        return calculateStatus(vehicleId, LocalDateTime.now(ZoneOffset.UTC));
     }
 
     public Optional<GpsReading> getLatestReading(Long vehicleId) {
