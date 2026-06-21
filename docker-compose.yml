@@ -83,6 +83,8 @@ services:
     build: ./simulator
     container_name: gps-simulator
     restart: unless-stopped
+    ports:
+      - "3001:3001"
     depends_on:
       backend:
         condition: service_healthy

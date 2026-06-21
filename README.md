@@ -117,3 +117,20 @@ npm start                 # usa API_URL=http://localhost:8080
 ├── .env.example
 └── README.md
 ```
+
+## Uso De Ia 
+
+
+## Uso de Inteligencia Artificial durante el desarrollo
+
+Durante el desarrollo de este proyecto se utilizó Inteligencia Artificial 
+como una herramienta de apoyo y orquestación del proceso de desarrollo. 
+Su uso estuvo enfocado en acelerar tareas como generación de ideas, revisión de código, 
+explicación de conceptos técnicos, identificación de posibles errores y validación de enfoques de implementación.
+
+Las decisiones de arquitectura, el diseño de la solución, la integración de componentes, 
+la depuración de problemas y la validación del funcionamiento final del sistema fueron realizadas de manera consciente y supervisada durante el desarrollo.
+
+La IA se utilizó como un asistente de productividad, similar a una herramienta de consulta avanzada, 
+manteniendo siempre criterio humano sobre el código generado, su calidad, seguridad, 
+mantenibilidad y adecuación a los requerimientos del proyecto.
