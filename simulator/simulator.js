@@ -1,4 +1,5 @@
 import axios from 'axios';
+import http from 'http';
 
 // ============================================================
 // Configuracion
@@ -120,6 +121,28 @@ function buildInvalidRequest(vehicle) {
 const stats = { sent: 0, success: 0, failed: 0, invalid: 0, notFound: 0, connErrors: 0 };
 
 // ============================================================
+// Vehiculos pausados (mecanismo de pausa por vehiculo)
+// ============================================================
+
+const pausedVehicles = new Set();
+
+// ============================================================
+// Envio con reintentos (backoff exponencial)
+// ============================================================
+
+async function sendWithRetry(payload, maxRetries = 3) {
+  for (let attempt = 0; attempt < maxRetries; attempt++) {
+    try {
+      return await axios.post(`${API_URL}/gps`, payload, { timeout: 5000 });
+    } catch (err) {
+      if (attempt === maxRetries - 1) throw err;
+      const delay = Math.min(1000 * Math.pow(2, attempt), 10000);
+      await new Promise(r => setTimeout(r, delay));
+    }
+  }
+}
+
+// ============================================================
 // Envio
 // ============================================================
 
@@ -130,10 +153,7 @@ async function sendGpsData(vehicle) {
   const label = `${c.cyan}[${vehicle.id}]${c.reset}`;
 
   try {
-    await axios.post(`${API_URL}/gps`, request, {
-      headers: { 'Content-Type': 'application/json' },
-      timeout: 5000,
-    });
+    await sendWithRetry(request);
 
     stats.sent++;
     stats.success++;
@@ -231,6 +251,9 @@ async function main() {
     const delay = MIN_INTERVAL + Math.random() * (MAX_INTERVAL - MIN_INTERVAL);
     setTimeout(async () => {
       vehicle = moveVehicle(vehicle);
+      if (pausedVehicles.has(vehicle.id)) {
+        return; // saltar este envío, el backend lo marcará SIN_SENAL después de 120s
+      }
       await sendGpsData(vehicle);
       const idx = vehicles.findIndex(v => v.id === vehicle.id);
       if (idx !== -1) vehicles[idx] = vehicle;
@@ -241,6 +264,9 @@ async function main() {
   vehicles.forEach((vehicle) => {
     const initialDelay = Math.random() * 2000;
     setTimeout(() => {
+      if (pausedVehicles.has(vehicle.id)) {
+        return; // saltar este envío, el backend lo marcará SIN_SENAL después de 120s
+      }
       sendGpsData(vehicle);
       scheduleNext(vehicle);
     }, initialDelay);
@@ -255,5 +281,89 @@ async function main() {
     process.exit(0);
   });
 }
+
+// ============================================================
+// Senales del sistema
+// ============================================================
+
+process.on('SIGTERM', () => {
+  console.log('\n[SHUTDOWN] SIGTERM recibido, terminando...');
+  printStats();
+  process.exit(0);
+});
+
+// ============================================================
+// Servidor de control (pausa/reanudacion por vehiculo)
+// ============================================================
+
+const controlServer = http.createServer((req, res) => {
+  // CORS
+  res.setHeader('Access-Control-Allow-Origin', '*');
+  res.setHeader('Access-Control-Allow-Methods', 'POST, GET, OPTIONS');
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
+
+  if (req.method === 'OPTIONS') {
+    res.writeHead(204);
+    res.end();
+    return;
+  }
+
+  if (req.method === 'POST' && req.url === '/pause') {
+    let body = '';
+    req.on('data', chunk => body += chunk);
+    req.on('end', () => {
+      try {
+        const { vehicleId } = JSON.parse(body);
+        if (vehicleId) {
+          pausedVehicles.add(vehicleId);
+          console.log(`[PAUSE] Vehiculo ${vehicleId} pausado. Backend lo marcara SIN_SENAL despues de 120s.`);
+          res.writeHead(200, { 'Content-Type': 'application/json' });
+          res.end(JSON.stringify({ status: 'paused', vehicleId, paused: Array.from(pausedVehicles) }));
+        }
+      } catch (e) {
+        res.writeHead(400);
+        res.end(JSON.stringify({ error: 'Invalid JSON' }));
+      }
+    });
+    return;
+  }
+
+  if (req.method === 'POST' && req.url === '/resume') {
+    let body = '';
+    req.on('data', chunk => body += chunk);
+    req.on('end', () => {
+      try {
+        const { vehicleId } = JSON.parse(body);
+        if (vehicleId) {
+          pausedVehicles.delete(vehicleId);
+          console.log(`[RESUME] Vehiculo ${vehicleId} reanudado.`);
+          res.writeHead(200, { 'Content-Type': 'application/json' });
+          res.end(JSON.stringify({ status: 'resumed', vehicleId, paused: Array.from(pausedVehicles) }));
+        }
+      } catch (e) {
+        res.writeHead(400);
+        res.end(JSON.stringify({ error: 'Invalid JSON' }));
+      }
+    });
+    return;
+  }
+
+  if (req.method === 'GET' && req.url === '/status') {
+    res.writeHead(200, { 'Content-Type': 'application/json' });
+    res.end(JSON.stringify({ paused: Array.from(pausedVehicles) }));
+    return;
+  }
+
+  res.writeHead(404);
+  res.end();
+});
+
+const CONTROL_PORT = process.env.CONTROL_PORT || 3001;
+controlServer.listen(CONTROL_PORT, () => {
+  console.log(`[CONTROL] Servidor de control escuchando en puerto ${CONTROL_PORT}`);
+  console.log(`  POST /pause   { "vehicleId": "GPS-001" }`);
+  console.log(`  POST /resume  { "vehicleId": "GPS-001" }`);
+  console.log(`  GET  /status`);
+});
 
 main();
