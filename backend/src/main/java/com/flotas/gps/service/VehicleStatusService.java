@@ -46,7 +46,7 @@ public class VehicleStatusService {
 
         // 1. SIN_SENAL: Sin coordenadas en mas de 120 segundos
         if (secondsSinceLastUpdate > NO_SIGNAL_THRESHOLD_SECONDS) {
-            log.info("[{}] SIN_SENAL - Ultima lectura hace {}s (limite: 120s)",
+            log.debug("[{}] SIN_SENAL - Ultima lectura hace {}s (limite: 120s)",
                     vehicleId, secondsSinceLastUpdate);
             return VehicleStatus.SIN_SENAL;
         }

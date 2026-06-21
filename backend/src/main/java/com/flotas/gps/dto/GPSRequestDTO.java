@@ -1,5 +1,7 @@
 package com.flotas.gps.dto;
 
+import jakarta.validation.constraints.DecimalMax;
+import jakarta.validation.constraints.DecimalMin;
 import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.NotBlank;
@@ -31,15 +33,21 @@ public class GPSRequestDTO {
 
     @NotNull(message = "timestamp es obligatorio")
     @Pattern(
-        regexp = "^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}(\\.\\d+)?(Z|[+-]\\d{2}:?\\d{2})?$",
-        message = "timestamp debe ser una fecha ISO 8601 válida (ej: 2024-01-15T10:30:00Z)"
+        regexp = "^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}(\\.[0-9]{1,9})?(Z|[+-][0-9]{2}:[0-9]{2})$",
+        message = "timestamp debe ser una fecha ISO 8601 válida con zona horaria (ej: 2024-01-15T10:30:00.000Z o 2024-01-15T10:30:00+00:00)"
     )
     private String timestamp;
 
+    @DecimalMin(value = "0.0", message = "speed debe estar entre 0.0 y 500.0")
+    @DecimalMax(value = "500.0", message = "speed debe estar entre 0.0 y 500.0")
     private Double speed;
 
+    @DecimalMin(value = "0.0", message = "heading debe estar entre 0.0 y 360.0")
+    @DecimalMax(value = "360.0", message = "heading debe estar entre 0.0 y 360.0")
     private Double heading;
 
+    @DecimalMin(value = "-500.0", message = "altitude debe estar entre -500.0 y 9000.0")
+    @DecimalMax(value = "9000.0", message = "altitude debe estar entre -500.0 y 9000.0")
     private Double altitude;
 
     private Boolean ignition;

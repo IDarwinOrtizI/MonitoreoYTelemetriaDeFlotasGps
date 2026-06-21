@@ -12,6 +12,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
 import java.time.OffsetDateTime;
+import java.time.ZoneOffset;
 
 @Service
 @RequiredArgsConstructor
@@ -19,6 +20,7 @@ public class GpsService {
 
     private final GpsReadingRepository gpsReadingRepository;
     private final VehicleRepository vehicleRepository;
+    private final VehicleStatusService vehicleStatusService;
 
     @Transactional
     public GpsReading saveGpsReading(GPSRequestDTO request) {
@@ -38,6 +40,13 @@ public class GpsService {
                 .recordedAt(recordedAt)
                 .build();
 
-        return gpsReadingRepository.save(reading);
+        GpsReading savedReading = gpsReadingRepository.save(reading);
+
+        vehicle.setStatus(
+                vehicleStatusService.calculateStatus(vehicle.getId(), LocalDateTime.now(ZoneOffset.UTC))
+        );
+        vehicleRepository.save(vehicle);
+
+        return savedReading;
     }
 }

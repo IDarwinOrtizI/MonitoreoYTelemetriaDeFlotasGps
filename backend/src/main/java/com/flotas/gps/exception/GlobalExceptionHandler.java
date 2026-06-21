@@ -7,10 +7,12 @@ import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.MissingServletRequestParameterException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
+import org.springframework.web.method.annotation.HandlerMethodValidationException;
 import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
 
 import java.net.URI;
 import java.time.Instant;
+import java.time.format.DateTimeParseException;
 import java.util.Map;
 
 @RestControllerAdvice
@@ -75,6 +77,32 @@ public class GlobalExceptionHandler {
         problem.setProperty("timestamp", Instant.now());
         problem.setProperty("parameter", ex.getName());
         problem.setProperty("expectedType", ex.getRequiredType() != null ? ex.getRequiredType().getSimpleName() : "unknown");
+        return problem;
+    }
+
+    @ExceptionHandler(DateTimeParseException.class)
+    public ProblemDetail handleDateTimeParseError(DateTimeParseException ex) {
+        ProblemDetail problem = ProblemDetail.forStatusAndDetail(
+                HttpStatus.BAD_REQUEST,
+                "Formato de timestamp inválido. Use ISO 8601 con zona horaria (ej: 2024-01-15T10:30:00.000Z)"
+        );
+        problem.setTitle("Formato de timestamp inválido");
+        problem.setType(URI.create("https://api.gps-telemetry.com/errors/invalid-timestamp"));
+        problem.setProperty("timestamp", Instant.now());
+        problem.setProperty("rejectedValue", ex.getParsedString() != null ? ex.getParsedString() : "");
+        return problem;
+    }
+
+    @ExceptionHandler(HandlerMethodValidationException.class)
+    public ProblemDetail handleHandlerMethodValidation(HandlerMethodValidationException ex) {
+        ProblemDetail problem = ProblemDetail.forStatusAndDetail(
+                HttpStatus.BAD_REQUEST,
+                "Error de validación en los parámetros de la solicitud"
+        );
+        problem.setTitle("Error de validación");
+        problem.setType(URI.create("https://api.gps-telemetry.com/errors/handler-validation"));
+        problem.setProperty("timestamp", Instant.now());
+        problem.setProperty("reason", ex.getReason() != null ? ex.getReason() : "Validación fallida");
         return problem;
     }
 
