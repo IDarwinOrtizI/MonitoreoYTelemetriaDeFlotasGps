@@ -1,0 +1,19 @@
+# Excluir dependencias, builds y metadatos del contexto
+node_modules/
+dist/
+build/
+.vite/
+.idea/
+.vscode/
+.git/
+.gitignore
+.env
+.env.local
+.env.*.local
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+Dockerfile
+.dockerignore
+README.md

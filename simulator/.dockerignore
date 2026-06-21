@@ -1,0 +1,14 @@
+# Excluir dependencias y metadatos del contexto
+node_modules/
+.idea/
+.vscode/
+.git/
+.gitignore
+.env
+.env.local
+.env.*.local
+*.log
+npm-debug.log*
+Dockerfile
+.dockerignore
+README.md
