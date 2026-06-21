@@ -30,6 +30,15 @@ export function formatTime(dateStr: string | Date | null | undefined): string {
   return date.toLocaleTimeString(LOCALE, { ...TIME_OPTIONS, timeZone: TIMEZONE });
 }
 
+/**
+ * Variante de {@link formatTime} que asume un `Date` válido (sin tolerancia a `null|string`).
+ * Útil cuando el caller ya validó la fecha y quiere evitar el branch defensivo.
+ */
+export function formatTimeOnly(date: Date): string {
+  if (Number.isNaN(date.getTime())) return '—';
+  return date.toLocaleTimeString(LOCALE, { ...TIME_OPTIONS, timeZone: TIMEZONE });
+}
+
 export function formatDate(dateStr: string | Date | null | undefined): string {
   if (!dateStr) return '—';
   const date = typeof dateStr === 'string' ? new Date(dateStr) : dateStr;

@@ -3,6 +3,13 @@ import styles from './StatisticsCards.module.css';
 import { useVehicles } from '../../hooks';
 import type { VehicleStatus } from '../../types';
 
+interface StatisticsCardsProps {
+  /** Override de loading. Si no se provee, se usa el del hook `useVehicles`. */
+  loading?: boolean;
+  /** Override de error. Si no se provee, se usa el del hook `useVehicles`. */
+  error?: string | null;
+}
+
 interface StatItem {
   key: string;
   label: string;
@@ -43,6 +50,14 @@ const ICON_NO_SIGNAL = (
   </svg>
 );
 
+const ICON_ERROR = (
+  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+    <circle cx="12" cy="12" r="10" />
+    <line x1="12" y1="8" x2="12" y2="12" />
+    <line x1="12" y1="16" x2="12.01" y2="16" />
+  </svg>
+);
+
 function countByStatus(vehicles: VehicleStatus[]) {
   return vehicles.reduce(
     (acc, v) => {
@@ -55,8 +70,10 @@ function countByStatus(vehicles: VehicleStatus[]) {
   );
 }
 
-export function StatisticsCards() {
-  const { vehicles } = useVehicles();
+export function StatisticsCards({ loading: loadingProp, error: errorProp }: StatisticsCardsProps = {}) {
+  const { vehicles, loading: loadingHook, error: errorHook } = useVehicles();
+  const loading = loadingProp ?? loadingHook;
+  const error = errorProp ?? errorHook;
 
   const stats = useMemo<StatItem[]>(() => {
     const counts = countByStatus(vehicles);
@@ -67,6 +84,24 @@ export function StatisticsCards() {
       { key: 'noSignal', label: 'Sin Señal',        value: counts.noSignal,  variant: 'noSignal', icon: ICON_NO_SIGNAL },
     ];
   }, [vehicles]);
+
+  const showSkeleton = loading && vehicles.length === 0;
+
+  if (error) {
+    return (
+      <section className={styles.grid} aria-label="Estadísticas de la flota">
+        <div className={`${styles.card} ${styles.errorCard}`} role="alert">
+          <div className={styles.iconWrap} aria-hidden="true">
+            {ICON_ERROR}
+          </div>
+          <div className={styles.body}>
+            <span className={styles.label}>Sin conexión</span>
+            <span className={styles.errorText}>{error}</span>
+          </div>
+        </div>
+      </section>
+    );
+  }
 
   return (
     <section className={styles.grid} aria-label="Estadísticas de la flota">
@@ -81,7 +116,11 @@ export function StatisticsCards() {
           </div>
           <div className={styles.body}>
             <span className={styles.label}>{s.label}</span>
-            <span className={styles.value}>{s.value}</span>
+            {showSkeleton ? (
+              <span className={styles.skeleton} aria-hidden="true" />
+            ) : (
+              <span className={styles.value}>{s.value}</span>
+            )}
           </div>
         </article>
       ))}

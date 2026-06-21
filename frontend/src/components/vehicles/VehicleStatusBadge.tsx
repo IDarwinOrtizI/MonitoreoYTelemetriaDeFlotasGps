@@ -1,26 +1,27 @@
 import styles from './VehicleStatusBadge.module.css';
-
-type Status = 'EN_MOVIMIENTO' | 'DETENIDO' | 'SIN_SENAL';
+import { STATUS_CONFIG, getStatusLabel } from '../../utils/vehicleStatus';
+import type { VehicleStatus } from '../../types';
 
 interface VehicleStatusBadgeProps {
-  status: Status;
+  status: VehicleStatus['status'];
   pulse?: boolean;
 }
 
-const CONFIG: Record<Status, { label: string; className: string; pulse: boolean }> = {
-  EN_MOVIMIENTO: { label: 'En Movimiento', className: styles.moving, pulse: true },
-  DETENIDO:     { label: 'Detenido',      className: styles.stopped, pulse: false },
-  SIN_SENAL:    { label: 'Sin Señal',     className: styles.noSignal, pulse: true },
+const CSS_CLASS_BY_KEY: Record<VehicleStatus['status'], string> = {
+  EN_MOVIMIENTO: styles.moving,
+  DETENIDO: styles.stopped,
+  SIN_SENAL: styles.noSignal,
 };
 
 export function VehicleStatusBadge({ status, pulse }: VehicleStatusBadgeProps) {
-  const config = CONFIG[status];
+  const config = STATUS_CONFIG[status];
+  const cssClass = CSS_CLASS_BY_KEY[status];
   const showPulse = pulse ?? config.pulse;
 
   return (
-    <span className={`${styles.badge} ${config.className}`}>
+    <span className={`${styles.badge} ${cssClass}`}>
       <span className={`${styles.dot} ${showPulse ? styles.pulse : ''}`} />
-      {config.label}
+      {getStatusLabel(status)}
     </span>
   );
 }
