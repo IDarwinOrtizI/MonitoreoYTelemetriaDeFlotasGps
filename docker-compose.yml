@@ -1,0 +1,113 @@
+# ============================================================
+# docker-compose.yml - Stack completo del sistema GPS
+# ============================================================
+# Levanta con:    docker-compose up --build
+# Detener:        docker-compose down
+# Limpiar datos:  docker-compose down -v
+# ============================================================
+
+services:
+  # ----------------------------------------------------------
+  # MySQL 8 - base de datos principal
+  # ----------------------------------------------------------
+  mysql:
+    image: mysql:8
+    container_name: gps-mysql
+    restart: unless-stopped
+    environment:
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:-rootpass}
+      MYSQL_DATABASE: ${MYSQL_DATABASE:-monitoreoytelemetria}
+      MYSQL_USER: ${MYSQL_USER:-gpsuser}
+      MYSQL_PASSWORD: ${MYSQL_PASSWORD:-gpspass}
+    ports:
+      - "13306:3306"
+    volumes:
+      - mysql_data:/var/lib/mysql
+    healthcheck:
+      # mysqladmin ping verifica que el server este listo
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "root", "-p${MYSQL_ROOT_PASSWORD:-rootpass}"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 30s
+    networks:
+      - gps-net
+
+  # ----------------------------------------------------------
+  # Backend - Spring Boot
+  # ----------------------------------------------------------
+  backend:
+    build: ./backend
+    container_name: gps-backend
+    restart: unless-stopped
+    depends_on:
+      mysql:
+        condition: service_healthy
+    environment:
+      # Estas variables SPRING_* sobrescriben application.properties
+      # (Spring Boot externaliza configuracion: env > properties)
+      SPRING_DATASOURCE_URL: jdbc:mysql://mysql:3306/${MYSQL_DATABASE:-monitoreoytelemetria}?useSSL=false&serverTimezone=UTC&allowPublicKeyRetrieval=true
+      SPRING_DATASOURCE_USERNAME: ${MYSQL_USER:-gpsuser}
+      SPRING_DATASOURCE_PASSWORD: ${MYSQL_PASSWORD:-gpspass}
+      SPRING_JPA_HIBERNATE_DDL_AUTO: update
+    ports:
+      - "8080:8080"
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:8080/actuator/health"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 40s
+    networks:
+      - gps-net
+
+  # ----------------------------------------------------------
+  # Frontend - Vite build servido por nginx
+  # ----------------------------------------------------------
+  frontend:
+    build: ./frontend
+    container_name: gps-frontend
+    restart: unless-stopped
+    depends_on:
+      backend:
+        condition: service_healthy
+    ports:
+      - "80:80"
+    networks:
+      - gps-net
+
+  # ----------------------------------------------------------
+  # Simulator - envia datos GPS al backend
+  # ----------------------------------------------------------
+  simulator:
+    build: ./simulator
+    container_name: gps-simulator
+    restart: unless-stopped
+    depends_on:
+      backend:
+        condition: service_healthy
+    environment:
+      # Apunta al servicio "backend" en la red de docker (NO localhost)
+      API_URL: http://backend:8080
+    # El simulador no expone puerto HTTP, por lo que su healthcheck queda deshabilitado.
+    # El arranque depende del healthcheck del backend (depends_on arriba).
+    healthcheck:
+      test: ["CMD-SHELL", "ps aux | grep -v grep | grep -q 'node simulator.js'"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 20s
+      disable: true
+    networks:
+      - gps-net
+
+# ============================================================
+# Volumenes y redes
+# ============================================================
+volumes:
+  mysql_data:
+    driver: local
+
+networks:
+  gps-net:
+    driver: bridge
